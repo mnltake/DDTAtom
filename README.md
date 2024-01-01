@@ -21,3 +21,6 @@ DirectDriveTechの[DDT M0602C_112 ダイレクトドライブモーター](https
 [M5Stack Dial ](https://www.switch-science.com/products/9271)
 
 を使いESP-NOWで送信します
+送信側ソースはこちら
+
+https://github.com/mnltake/Dial-controler
