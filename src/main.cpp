@@ -7,10 +7,14 @@
 #define NUM_LEDS 1
 
 uint8_t Acce = 0;    // Acceleration of motor
-uint8_t Brake_P = 0xff; // Brake position of motor
+uint8_t Brake_P = 0x00; // Brake position of motor
 uint8_t ID = 1;      // ID of Motor (default:1)
-uint8_t Mode = 0x03; //Angle loop
+// uint8_t Mode = 0x01; //Angle loop
+uint8_t angleMode = 0x03;
+uint8_t velocityMode = 0x02;
 uint8_t reset = 0;
+uint16_t oldposision = 0;
+int16_t diff =0;
 Receiver Receiv;
 CRGB leds[NUM_LEDS];
 // M5Stackのモジュールによって対応するRX,TXのピン番号が違うためM5製品とRS485モジュールに対応させてください
@@ -47,20 +51,64 @@ void configDeviceAP() {
 }
 // callback when data is recv from Master
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
-  char macStr[18];
-  snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
-           mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-  Serial.print("Last Packet Recv from: "); Serial.println(macStr);
+  // char macStr[18];
+  // snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
+  //          mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+  // Serial.print("Last Packet Recv from: "); Serial.println(macStr);
+  // motor_handler.Check_Motor(&Receiv);
+  oldposision = Receiv.Position / 512;
   Serial.print("Last Packet Recv Data: "); Serial.printf("%02x %02x %02x\n",data[0],data[1],data[2]);
-  uint16_t newposision = data[0] | data[1]<<8;
+  uint16_t recvposision = (data[0] | data[1]<<8) % 64;
   reset = data[2];
-  // Serial.printf("newposision: %d\n",newposision);
-  uint16_t angle =  (newposision%64)*512;
-  // Serial.println(angle);
-  setAngle(angle);
+  Serial.printf("recv : %d\n",recvposision);
+  Serial.printf("old : %d\n",oldposision);
+  diff = (oldposision-recvposision)%64;
+  Serial.printf("diff : %d\n",diff);
+  // if (abs(diff) < 3){
+  //   oldposision = recvposision;
+  // }else{
+  //   oldposision = recvposision+diff;
+  // }
+  
+  uint16_t angle;
+  // while (abs(recvposision - oldposision) > 3){
+   angle =  recvposision*512;
+      // angle =  (recvposision*0.9+(recvposision+ diff)*0.1)*512;
+  //   setAngle(angle);
+  // }
+    // Serial.println(angle);
+    if(reset%2){
+      motor_handler.Set_MotorMode(velocityMode ,ID);
+      delay(100);
+      motor_handler.Control_Motor(0 ,ID ,Acce,Brake_P,&Receiv);
+      delay(100);
+      // motor_handler.Check_Motor(&Receiv);
+    }else{
+      motor_handler.Set_MotorMode(angleMode ,ID);
+      
+      setAngle(angle);
+    }
 
+  // setAngle(newposision);
 }
 
+void setAngle(uint16_t Angle)
+{
+  motor_handler.Control_Motor(Angle, ID, Acce, Brake_P, &Receiv);
+  Serial.print("Mode:");
+  Serial.print(Receiv.BMode);
+  Serial.print(" Position:");
+  
+  Serial.print(Receiv.Position);
+  Serial.print(" inputAngle:");
+  Serial.println(Angle);
+  // while (Serial2.available()<0)
+  // {
+  //   Serial.printf("%02x ",Serial2.read());
+  // }
+  
+
+}
 void setup()
 {
   M5.begin(true, false, false); //Serial:true I2C:false
@@ -71,7 +119,7 @@ void setup()
   // delay(100);
   // // motor_handler.Control_Motor(0, ID, Acce, Brake_P, &Receiv); //モータ停止
   // delay(100);
-  motor_handler.Set_MotorMode(Mode, ID); //モード変更
+  motor_handler.Set_MotorMode(angleMode, ID); //モード変更
   delay(100);
     //Set device in AP mode to begin with
   WiFi.mode(WIFI_AP);
@@ -88,28 +136,23 @@ void setup()
 
 void loop()
 {
+  // if(reset%2){
+  //   motor_handler.Set_MotorMode(velocityMode ,ID);
+  //   delay(100);
+  //   motor_handler.Control_Motor(0 ,ID ,Acce,Brake_P,&Receiv);
+  //   delay(100);
+  //   motor_handler.Set_MotorMode(angleMode ,ID);
+  // }
 
-  while (Receiv.BMode != Mode){
+  while(!((Receiv.BMode == angleMode) || (Receiv.BMode == velocityMode) ) ){
     M5.update();
     leds[0] = CRGB::Red;
     FastLED.show();
-    if (M5.Btn.isPressed() || reset ){
+    if (M5.Btn.isPressed()  ){
       ESP.restart();
     }
     
   }
   leds[0] = CRGB::Black;
   FastLED.show();
-}
-
-void setAngle(uint16_t Angle)
-{
-  motor_handler.Control_Motor(Angle, ID, Acce, Brake_P, &Receiv);
-  Serial.print("Mode:");
-  Serial.print(Receiv.BMode);
-  Serial.print(" Position:");
-  Serial.print(Receiv.Position);
-  Serial.print(" inputAngle:");
-  Serial.println(Angle);
-
 }
