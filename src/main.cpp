@@ -1,5 +1,5 @@
 #include <DDT_Motor_M15M06.h>
-// #include <M5Unified.h>
+#include <M5Atom.h>
 #include <esp_now.h>
 #include <WiFi.h>
 uint8_t Acce = 0;    // Acceleration of motor
@@ -56,7 +56,8 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
 
 void setup()
 {
-  Serial.begin(115200);
+  M5.begin(true, false, false); 
+  // Serial.begin(115200);
   Serial.println("DDT-Motor RS485");
   pinMode(39 ,INPUT_PULLUP);
   delay(100);
