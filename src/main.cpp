@@ -1,5 +1,5 @@
 #include <DDT_Motor_M15M06.h>
-#include <M5Unified.h>
+// #include <M5Unified.h>
 #include <esp_now.h>
 #include <WiFi.h>
 uint8_t Acce = 0;    // Acceleration of motor
@@ -58,6 +58,7 @@ void setup()
 {
   Serial.begin(115200);
   Serial.println("DDT-Motor RS485");
+  pinMode(39 ,INPUT_PULLUP);
   delay(100);
   motor_handler.Control_Motor(0, ID, Acce, Brake_P, &Receiv); //モータ停止
   delay(100);
@@ -79,16 +80,18 @@ void setup()
 void loop()
 {
   // motor_handler.Get_Motor(ID ,&Receiv);
-  // while (Receiv.BMode != Mode){
-  //   // M5.update();
-  //   // if (M5.BtnA.isPressed())
-  //   // ESP.restart();
-  // }
+  while (Receiv.BMode != Mode){
+    // M5.update();
+    if (!digitalRead(39)){
+      ESP.restart();
+    }
+    
+  }
 }
 
 void setAngle(uint16_t Angle)
 {
-
+  Serial1.flush();
   motor_handler.Control_Motor(Angle, ID, Acce, Brake_P, &Receiv);
   Serial.print("Mode:");
   Serial.print(Receiv.BMode);
