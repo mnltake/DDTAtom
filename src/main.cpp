@@ -46,9 +46,9 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
   Serial.print("Last Packet Recv from: "); Serial.println(macStr);
   Serial.print("Last Packet Recv Data: "); Serial.printf("%02x %02x\n",data[0],data[1]);
-  int16_t newposision = data[0] | data[1]<<8;
+  uint16_t newposision = data[0] | data[1]<<8;
   // Serial.printf("newposision: %d\n",newposision);
-  uint16_t angle =  abs((newposision%64)*512);
+  uint16_t angle =  (newposision%64)*512;
   // Serial.println(angle);
   setAngle(angle);
 
