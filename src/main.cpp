@@ -2,16 +2,21 @@
 #include <M5Atom.h>
 #include <esp_now.h>
 #include <WiFi.h>
+#define CHANNEL 1
+#define LED_PIN 27
+#define NUM_LEDS 1
+
 uint8_t Acce = 0;    // Acceleration of motor
 uint8_t Brake_P = 0; // Brake position of motor
 uint8_t ID = 1;      // ID of Motor (default:1)
 uint8_t Mode = 0x03; //Angle loop
 Receiver Receiv;
+CRGB leds[NUM_LEDS];
 // M5Stackのモジュールによって対応するRX,TXのピン番号が違うためM5製品とRS485モジュールに対応させてください
-auto motor_handler = MotorHandler(21, 25); // RX,TX
+auto motor_handler = MotorHandler(32, 26); // RX=21,TX=25
 void setAngle(uint16_t Angle);
 
-#define CHANNEL 1
+
 
 // Init ESP Now with fallback
 void InitESPNow() {
@@ -56,10 +61,11 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
 
 void setup()
 {
-  M5.begin(true, false, false); 
+  M5.begin(true, false, false); //Serial:true I2C:false
   // Serial.begin(115200);
+  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS); 
   Serial.println("DDT-Motor RS485");
-  pinMode(39 ,INPUT_PULLUP);
+  // pinMode(39 ,INPUT_PULLUP);
   delay(100);
   motor_handler.Control_Motor(0, ID, Acce, Brake_P, &Receiv); //モータ停止
   delay(100);
@@ -80,19 +86,22 @@ void setup()
 
 void loop()
 {
-  // motor_handler.Get_Motor(ID ,&Receiv);
+
   while (Receiv.BMode != Mode){
-    // M5.update();
-    if (!digitalRead(39)){
+    M5.update();
+    leds[0] = CRGB::Red;
+    FastLED.show();
+    if (M5.Btn.isPressed()){
       ESP.restart();
     }
     
   }
+  leds[0] = CRGB::Black;
+  FastLED.show();
 }
 
 void setAngle(uint16_t Angle)
 {
-  Serial1.flush();
   motor_handler.Control_Motor(Angle, ID, Acce, Brake_P, &Receiv);
   Serial.print("Mode:");
   Serial.print(Receiv.BMode);
@@ -100,4 +109,5 @@ void setAngle(uint16_t Angle)
   Serial.print(Receiv.Position);
   Serial.print(" inputAngle:");
   Serial.println(Angle);
+
 }
